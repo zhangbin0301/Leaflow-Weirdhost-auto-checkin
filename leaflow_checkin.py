@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Leaflow 自动签到脚本 - 修复版
-简化配置，只支持冒号分隔多账号和单账号
+Leaflow 多账号自动签到脚本
+支持冒号分隔多账号和单账号配置
 """
 
 import os
@@ -58,17 +58,17 @@ class LeaflowAutoCheckin:
             logger.info("尝试关闭初始弹窗...")
             time.sleep(3)  # 等待弹窗加载
             
-            # 尝试点击页面空白处关闭弹窗
+            # 尝试点击页面左上角空白处关闭弹窗
             try:
                 actions = ActionChains(self.driver)
                 # 点击页面左上角(10,10)位置
                 actions.move_by_offset(10, 10).click().perform()
-                logger.info("已关闭弹窗")
+                logger.info("通过点击空白区域关闭弹窗")
                 time.sleep(2)
                 return True
             except:
                 pass
-                
+
             return False
             
         except Exception as e:
@@ -89,7 +89,7 @@ class LeaflowAutoCheckin:
     
     def login(self):
         """执行登录流程"""
-        logger.info(f"开始登录流程 - 账号: {self.email}")
+        logger.info(f"开始登录流程")
         
         # 访问登录页面
         self.driver.get("https://leaflow.net/login")
@@ -120,7 +120,7 @@ class LeaflowAutoCheckin:
             for selector in email_selectors:
                 try:
                     email_input = self.wait_for_element_clickable(By.CSS_SELECTOR, selector, 5)
-                    logger.info(f"找到邮箱输入框: {selector}")
+                    logger.info(f"找到邮箱输入框")
                     break
                 except:
                     continue
@@ -179,7 +179,7 @@ class LeaflowAutoCheckin:
                         login_btn = self.wait_for_element_clickable(By.XPATH, selector, 5)
                     else:
                         login_btn = self.wait_for_element_clickable(By.CSS_SELECTOR, selector, 5)
-                    logger.info(f"找到登录按钮: {selector}")
+                    logger.info(f"找到登录按钮")
                     break
                 except:
                     continue
@@ -196,12 +196,12 @@ class LeaflowAutoCheckin:
         # 等待登录完成
         try:
             WebDriverWait(self.driver, 20).until(
-                lambda driver: "dashboard" in driver.current_url or "login" not in driver.current_url
+                lambda driver: "dashboard" in driver.current_url or "workspaces" in driver.current_url or "login" not in driver.current_url
             )
             
             # 检查当前URL确认登录成功
             current_url = self.driver.current_url
-            if "dashboard" in current_url or "login" not in current_url:
+            if "dashboard" in current_url or "workspaces" in current_url or "login" not in current_url:
                 logger.info(f"登录成功，当前URL: {current_url}")
                 return True
             else:
@@ -231,10 +231,10 @@ class LeaflowAutoCheckin:
             try:
                 # 检查页面是否包含签到相关元素
                 checkin_indicators = [
-                    "//*[contains(text(), '立即签到')]",
+                    "button.checkin-btn",  # 优先使用这个选择器
+                    "//button[contains(text(), '立即签到')]",
                     "//*[contains(text(), '每日签到')]",
-                    "//*[contains(text(), '签到')]",
-                    "button.checkin-btn"
+                    "//*[contains(text(), '签到')]"
                 ]
                 
                 for indicator in checkin_indicators:
@@ -249,7 +249,7 @@ class LeaflowAutoCheckin:
                             )
                         
                         if element.is_displayed():
-                            logger.info(f"找到签到页面元素: {indicator}")
+                            logger.info(f"找到签到页面元素")
                             return True
                     except:
                         continue
@@ -261,54 +261,49 @@ class LeaflowAutoCheckin:
         
         return False
     
-    def find_and_click_checkin_button(self, max_retries=3, wait_time=20):
-        """查找并点击签到按钮，支持重试"""
-        for attempt in range(max_retries):
-            logger.info(f"查找立即签到按钮，尝试 {attempt + 1}/{max_retries}...")
-            
-            try:
-                # 先等待页面可能的重载
-                time.sleep(5)
-                
-                # 尝试多种选择器找到签到按钮
-                checkin_selectors = [
-                    "button.checkin-btn",  # 根据您提供的HTML，这是最准确的选择器
-                    "//button[contains(text(), '立即签到')]",
-                    "//button[contains(@class, 'checkin')]",
-                    "button[type='submit']",
-                    "button[name='checkin']"
-                ]
-                
-                for selector in checkin_selectors:
-                    try:
-                        if selector.startswith("//"):
-                            checkin_btn = WebDriverWait(self.driver, 15).until(
-                                EC.element_to_be_clickable((By.XPATH, selector))
-                            )
-                        else:
-                            checkin_btn = WebDriverWait(self.driver, 15).until(
-                                EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
-                            )
-                        
-                        if checkin_btn.is_displayed() and checkin_btn.is_enabled():
-                            logger.info(f"找到并点击立即签到按钮: {selector}")
-                            checkin_btn.click()
-                            return True
-                            
-                    except Exception as e:
-                        logger.debug(f"选择器 {selector} 未找到按钮: {e}")
-                        continue
-                
-                logger.warning(f"第 {attempt + 1} 次尝试未找到可点击的签到按钮，等待 {wait_time} 秒后重试...")
-                if attempt < max_retries - 1:  # 不是最后一次尝试
-                    time.sleep(wait_time)
-                    
-            except Exception as e:
-                logger.warning(f"第 {attempt + 1} 次尝试点击签到按钮时出错: {e}")
-                if attempt < max_retries - 1:  # 不是最后一次尝试
-                    time.sleep(wait_time)
+    def find_and_click_checkin_button(self):
+        """查找并点击签到按钮 - 使用和单账号成功时相同的逻辑"""
+        logger.info("查找立即签到按钮...")
         
-        return False
+        try:
+            # 先等待页面可能的重载
+            time.sleep(5)
+            
+            # 使用和单账号成功时相同的选择器
+            checkin_selectors = [
+                "button.checkin-btn",  # 根据您提供的HTML，这是最准确的选择器
+                "//button[contains(text(), '立即签到')]",
+                "//button[contains(@class, 'checkin')]",
+                "button[type='submit']",
+                "button[name='checkin']"
+            ]
+            
+            for selector in checkin_selectors:
+                try:
+                    if selector.startswith("//"):
+                        checkin_btn = WebDriverWait(self.driver, 15).until(
+                            EC.element_to_be_clickable((By.XPATH, selector))
+                        )
+                    else:
+                        checkin_btn = WebDriverWait(self.driver, 15).until(
+                            EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
+                        )
+                    
+                    if checkin_btn.is_displayed() and checkin_btn.is_enabled():
+                        logger.info(f"找到并点击立即签到按钮")
+                        checkin_btn.click()
+                        return True
+                        
+                except Exception as e:
+                    logger.debug(f"选择器未找到按钮: {e}")
+                    continue
+            
+            logger.error("找不到可点击的签到按钮")
+            return False
+                    
+        except Exception as e:
+            logger.error(f"点击签到按钮时出错: {e}")
+            return False
     
     def checkin(self):
         """执行签到流程"""
@@ -321,8 +316,8 @@ class LeaflowAutoCheckin:
         if not self.wait_for_checkin_page_loaded(max_retries=3, wait_time=20):
             raise Exception("签到页面加载失败，无法找到签到相关元素")
         
-        # 查找并点击立即签到按钮（最多重试3次，每次等待20秒）
-        if not self.find_and_click_checkin_button(max_retries=3, wait_time=20):
+        # 查找并点击立即签到按钮
+        if not self.find_and_click_checkin_button():
             raise Exception("找不到立即签到按钮或按钮不可点击")
         
         logger.info("已点击立即签到按钮")
@@ -390,19 +385,19 @@ class LeaflowAutoCheckin:
     def run(self):
         """单个账号执行流程"""
         try:
-            logger.info(f"开始处理账号: {self.email}")
+            logger.info(f"开始处理账号")
             
             # 登录
             if self.login():
                 # 签到
                 result = self.checkin()
-                logger.info(f"账号 {self.email} 签到结果: {result}")
+                logger.info(f"签到结果: {result}")
                 return True, result
             else:
                 raise Exception("登录失败")
                 
         except Exception as e:
-            error_msg = f"账号 {self.email} 自动签到失败: {str(e)}"
+            error_msg = f"自动签到失败: {str(e)}"
             logger.error(error_msg)
             return False, error_msg
         
@@ -418,57 +413,22 @@ class MultiAccountManager:
         self.telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID', '')
         self.accounts = self.load_accounts()
     
-    def debug_environment_variables(self):
-        """调试环境变量"""
-        logger.info("=== 环境变量调试信息 ===")
-        
-        # 检查所有相关的环境变量
-        env_vars = [
-            'LEAFLOW_ACCOUNTS',
-            'LEAFLOW_EMAIL', 
-            'LEAFLOW_PASSWORD',
-            'TELEGRAM_BOT_TOKEN',
-            'TELEGRAM_CHAT_ID',
-            'GITHUB_ACTIONS'
-        ]
-        
-        for var in env_vars:
-            value = os.getenv(var, 'NOT_SET')
-            if var in ['LEAFLOW_ACCOUNTS', 'LEAFLOW_EMAIL', 'LEAFLOW_PASSWORD']:
-                # 对于敏感信息，只显示是否存在和长度
-                if value != 'NOT_SET':
-                    logger.info(f"{var}: 已设置 (长度: {len(value)})")
-                    # 显示部分内容用于调试（不显示完整密码）
-                    if var == 'LEAFLOW_ACCOUNTS' and len(value) > 10:
-                        logger.info(f"  LEAFLOW_ACCOUNTS 预览: {value[:50]}...")
-                else:
-                    logger.info(f"{var}: 未设置")
-            else:
-                if value != 'NOT_SET':
-                    logger.info(f"{var}: 已设置")
-                else:
-                    logger.info(f"{var}: 未设置")
-        
-        logger.info("=== 环境变量调试结束 ===")
-    
     def load_accounts(self):
         """从环境变量加载多账号信息，支持冒号分隔多账号和单账号"""
         accounts = []
         
         logger.info("开始加载账号配置...")
-        self.debug_environment_variables()
         
         # 方法1: 冒号分隔多账号格式
         accounts_str = os.getenv('LEAFLOW_ACCOUNTS', '').strip()
-        if accounts_str and accounts_str != 'NOT_SET':
+        if accounts_str:
             try:
-                logger.info(f"尝试解析冒号分隔多账号配置: {accounts_str[:50]}...")
+                logger.info("尝试解析冒号分隔多账号配置")
                 account_pairs = [pair.strip() for pair in accounts_str.split(',')]
                 
-                logger.info(f"找到 {len(account_pairs)} 个账号对")
+                logger.info(f"找到 {len(account_pairs)} 个账号")
                 
                 for i, pair in enumerate(account_pairs):
-                    logger.info(f"解析第 {i+1} 个账号对: {pair}")
                     if ':' in pair:
                         email, password = pair.split(':', 1)
                         email = email.strip()
@@ -479,36 +439,34 @@ class MultiAccountManager:
                                 'email': email,
                                 'password': password
                             })
-                            logger.info(f"✅ 成功添加账号: {email[:5]}***")
+                            logger.info(f"成功添加第 {i+1} 个账号")
                         else:
-                            logger.warning(f"❌ 账号对格式错误: {pair}")
+                            logger.warning(f"账号对格式错误")
                     else:
-                        logger.warning(f"❌ 账号对缺少冒号分隔符: {pair}")
+                        logger.warning(f"账号对缺少冒号分隔符")
                 
                 if accounts:
-                    logger.info(f"✅ 从冒号分隔格式成功加载了 {len(accounts)} 个账号")
+                    logger.info(f"从冒号分隔格式成功加载了 {len(accounts)} 个账号")
                     return accounts
                 else:
-                    logger.warning("❌ 冒号分隔配置中没有找到有效的账号信息")
+                    logger.warning("冒号分隔配置中没有找到有效的账号信息")
             except Exception as e:
-                logger.error(f"❌ 解析冒号分隔账号配置失败: {e}")
-                import traceback
-                logger.error(f"详细错误: {traceback.format_exc()}")
+                logger.error(f"解析冒号分隔账号配置失败: {e}")
         
         # 方法2: 单账号格式
         single_email = os.getenv('LEAFLOW_EMAIL', '').strip()
         single_password = os.getenv('LEAFLOW_PASSWORD', '').strip()
         
-        if single_email and single_email != 'NOT_SET' and single_password and single_password != 'NOT_SET':
+        if single_email and single_password:
             accounts.append({
                 'email': single_email,
                 'password': single_password
             })
-            logger.info("✅ 加载了单个账号配置")
+            logger.info("加载了单个账号配置")
             return accounts
         
         # 如果所有方法都失败
-        logger.error("❌ 未找到有效的账号配置")
+        logger.error("未找到有效的账号配置")
         logger.error("请检查以下环境变量设置:")
         logger.error("1. LEAFLOW_ACCOUNTS: 冒号分隔多账号 (email1:pass1,email2:pass2)")
         logger.error("2. LEAFLOW_EMAIL 和 LEAFLOW_PASSWORD: 单账号")
