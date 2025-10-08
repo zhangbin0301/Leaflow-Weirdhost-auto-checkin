@@ -1,0 +1,50 @@
+name: Leaflow Auto Checkin
+
+on:
+  schedule:
+    # 每天UTC时间00:00运行（北京时间08:00）
+    - cron: '0 0 * * *'
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  checkin:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Install Chrome
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        
+    - name: Run auto checkin
+      env:
+        LEAFLOW_EMAIL: ${{ secrets.LEAFLOW_EMAIL }}
+        LEAFLOW_PASSWORD: ${{ secrets.LEAFLOW_PASSWORD }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        GITHUB_ACTIONS: true
+      run: |
+        python leaflow_checkin.py
+        
+    - name: Notify on failure
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        channel: '#notifications'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
