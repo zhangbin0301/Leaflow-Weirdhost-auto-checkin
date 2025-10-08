@@ -39,25 +39,17 @@ email1@example.com:password1,email2@example.com:password2
 ```
 
 
-
-### 2. GitHub Actions 自动运行
+### GitHub Actions 自动运行
 
 1. Fork 本仓库
 2. 在仓库 Settings > Secrets and variables > Actions 中添加以下 secrets：
    - `LEAFLOW_ACCOUNTS`: 账号信息(账号密码之间英文冒号分隔,多账号之间英文逗号分隔)
+
+Telegram 通知配置
    - `TELEGRAM_BOT_TOKEN`（可选）: Telegram Bot Token
    - `TELEGRAM_CHAT_ID`（可选）: Telegram Chat ID
 
-3. 启用 GitHub Actions 工作流
-
-### 3. Telegram 通知配置
-
-要启用 Telegram 通知，请设置以下环境变量：
-
-```bash
-TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
-TELEGRAM_CHAT_ID="your_telegram_chat_id"
-```
+3. 启用 Actions 启用工作流
 
 ## 配置说明
 
@@ -86,6 +78,7 @@ GPL 3.0
 * 禁止新建项目将代码复制到自己仓库中用做商业行为，违者必究
 * 用于商业行为的任何分支必须完整保留本项目说明，违者必究
 * 请遵守当地法律法规,禁止滥用做公共代理行为
+
 
 
 
