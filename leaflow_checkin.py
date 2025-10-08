@@ -63,7 +63,7 @@ class LeaflowAutoCheckin:
                 actions = ActionChains(self.driver)
                 # 点击页面左上角(10,10)位置
                 actions.move_by_offset(10, 10).click().perform()
-                logger.info("通过点击空白区域关闭弹窗")
+                logger.info("关闭弹窗成功")
                 time.sleep(2)
                 return True
             except:
@@ -484,7 +484,7 @@ class MultiAccountManager:
             success_count = sum(1 for _, success, _ in results if success)
             total_count = len(results)
             
-            message = f"🏆 Leaflow多账号签到汇总\n"
+            message = f"🎁 Leaflow自动签到通知\n"
             message += f"📊 成功: {success_count}/{total_count}\n\n"
             
             for email, success, result in results:
@@ -553,7 +553,6 @@ def main():
         else:
             success_count = sum(1 for _, success, _ in detailed_results if success)
             logger.warning(f"⚠️ 部分账号签到失败: {success_count}/{len(detailed_results)} 成功")
-            # 即使有失败，也不退出错误状态，因为可能部分成功
             exit(0)
             
     except Exception as e:
