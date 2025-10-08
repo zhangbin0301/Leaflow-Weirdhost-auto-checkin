@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Leaflow 多账号自动签到脚本
-支持冒号分隔多账号和单账号配置
+Leaflow 自动签到脚本 - 修复版
+简化配置，只支持冒号分隔多账号和单账号
 """
 
 import os
@@ -58,28 +58,17 @@ class LeaflowAutoCheckin:
             logger.info("尝试关闭初始弹窗...")
             time.sleep(3)  # 等待弹窗加载
             
-            # 方法1: 尝试点击页面左上角空白处关闭弹窗
+            # 尝试点击页面空白处关闭弹窗
             try:
                 actions = ActionChains(self.driver)
                 # 点击页面左上角(10,10)位置
                 actions.move_by_offset(10, 10).click().perform()
-                logger.info("通过点击空白区域关闭弹窗")
+                logger.info("已关闭弹窗")
                 time.sleep(2)
                 return True
             except:
                 pass
-            
-            # 方法2: 尝试按ESC键
-            try:
-                from selenium.webdriver.common.keys import Keys
-                actions = ActionChains(self.driver)
-                actions.send_keys(Keys.ESCAPE).perform()
-                logger.info("通过ESC键关闭弹窗")
-                time.sleep(2)
-                return True
-            except:
-                pass
-    
+                
             return False
             
         except Exception as e:
@@ -429,20 +418,57 @@ class MultiAccountManager:
         self.telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID', '')
         self.accounts = self.load_accounts()
     
+    def debug_environment_variables(self):
+        """调试环境变量"""
+        logger.info("=== 环境变量调试信息 ===")
+        
+        # 检查所有相关的环境变量
+        env_vars = [
+            'LEAFLOW_ACCOUNTS',
+            'LEAFLOW_EMAIL', 
+            'LEAFLOW_PASSWORD',
+            'TELEGRAM_BOT_TOKEN',
+            'TELEGRAM_CHAT_ID',
+            'GITHUB_ACTIONS'
+        ]
+        
+        for var in env_vars:
+            value = os.getenv(var, 'NOT_SET')
+            if var in ['LEAFLOW_ACCOUNTS', 'LEAFLOW_EMAIL', 'LEAFLOW_PASSWORD']:
+                # 对于敏感信息，只显示是否存在和长度
+                if value != 'NOT_SET':
+                    logger.info(f"{var}: 已设置 (长度: {len(value)})")
+                    # 显示部分内容用于调试（不显示完整密码）
+                    if var == 'LEAFLOW_ACCOUNTS' and len(value) > 10:
+                        logger.info(f"  LEAFLOW_ACCOUNTS 预览: {value[:50]}...")
+                else:
+                    logger.info(f"{var}: 未设置")
+            else:
+                if value != 'NOT_SET':
+                    logger.info(f"{var}: 已设置")
+                else:
+                    logger.info(f"{var}: 未设置")
+        
+        logger.info("=== 环境变量调试结束 ===")
+    
     def load_accounts(self):
         """从环境变量加载多账号信息，支持冒号分隔多账号和单账号"""
         accounts = []
         
         logger.info("开始加载账号配置...")
+        self.debug_environment_variables()
         
         # 方法1: 冒号分隔多账号格式
         accounts_str = os.getenv('LEAFLOW_ACCOUNTS', '').strip()
-        if accounts_str:
+        if accounts_str and accounts_str != 'NOT_SET':
             try:
-                logger.info("尝试解析冒号分隔多账号配置...")
-                account_pairs = accounts_str.split(',')
+                logger.info(f"尝试解析冒号分隔多账号配置: {accounts_str[:50]}...")
+                account_pairs = [pair.strip() for pair in accounts_str.split(',')]
                 
-                for pair in account_pairs:
+                logger.info(f"找到 {len(account_pairs)} 个账号对")
+                
+                for i, pair in enumerate(account_pairs):
+                    logger.info(f"解析第 {i+1} 个账号对: {pair}")
                     if ':' in pair:
                         email, password = pair.split(':', 1)
                         email = email.strip()
@@ -453,21 +479,27 @@ class MultiAccountManager:
                                 'email': email,
                                 'password': password
                             })
-                            logger.info(f"添加账号: {email}")
+                            logger.info(f"✅ 成功添加账号: {email[:5]}***")
+                        else:
+                            logger.warning(f"❌ 账号对格式错误: {pair}")
+                    else:
+                        logger.warning(f"❌ 账号对缺少冒号分隔符: {pair}")
                 
                 if accounts:
-                    logger.info(f"✅ 从冒号分隔格式加载了 {len(accounts)} 个账号")
+                    logger.info(f"✅ 从冒号分隔格式成功加载了 {len(accounts)} 个账号")
                     return accounts
                 else:
                     logger.warning("❌ 冒号分隔配置中没有找到有效的账号信息")
             except Exception as e:
-                logger.warning(f"❌ 解析冒号分隔账号配置失败: {e}")
+                logger.error(f"❌ 解析冒号分隔账号配置失败: {e}")
+                import traceback
+                logger.error(f"详细错误: {traceback.format_exc()}")
         
         # 方法2: 单账号格式
         single_email = os.getenv('LEAFLOW_EMAIL', '').strip()
         single_password = os.getenv('LEAFLOW_PASSWORD', '').strip()
         
-        if single_email and single_password:
+        if single_email and single_email != 'NOT_SET' and single_password and single_password != 'NOT_SET':
             accounts.append({
                 'email': single_email,
                 'password': single_password
