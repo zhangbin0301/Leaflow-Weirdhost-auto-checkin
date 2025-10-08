@@ -38,10 +38,15 @@ LEAFLOW_PASSWORDS    password1,password2
 ```bash
 LEAFLOW_ACCOUNTS
 
-[
-{"email":"email1@example.com","password":"password1"},
-{"email":"email2@example.com","password":"password2"}
-...添加更多账号
+[{
+		"email": "email1@example.com",
+		"password": "password1"
+	},
+	{
+		"email": "email2@example.com",
+		"password": "password2"
+	}
+......添加更多账号
 ]
 ```
 
@@ -102,4 +107,5 @@ export TELEGRAM_CHAT_ID="your_telegram_chat_id"
 
 
 本项目采用 MIT 许可证，详情请见 [LICENSE](LICENSE) 文件。
+
 
