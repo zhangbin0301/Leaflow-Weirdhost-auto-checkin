@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
 """
 Leaflow 多账号自动签到脚本
-支持Telegram通知和GitHub Actions运行
+支持JSON多账号、逗号分隔和单账号配置
 """
 
 import os
 import time
 import logging
+import json
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 import requests
-import json
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -60,52 +59,15 @@ class LeaflowAutoCheckin:
             logger.info("尝试关闭初始弹窗...")
             time.sleep(3)  # 等待弹窗加载
             
-            # 方法1: 尝试点击页面左上角空白处关闭弹窗
             try:
                 actions = ActionChains(self.driver)
-                # 点击页面左上角(10,10)位置
                 actions.move_by_offset(10, 10).click().perform()
-                logger.info("通过点击空白区域关闭弹窗")
+                logger.info("已关闭弹窗")
                 time.sleep(2)
                 return True
             except:
                 pass
-            
-            # 方法2: 尝试按ESC键
-            try:
-                from selenium.webdriver.common.keys import Keys
-                actions = ActionChains(self.driver)
-                actions.send_keys(Keys.ESCAPE).perform()
-                logger.info("通过ESC键关闭弹窗")
-                time.sleep(2)
-                return True
-            except:
-                pass
-            
-            # 方法3: 尝试常规关闭按钮
-            close_selectors = [
-                "button[class*='close']",
-                "div[class*='modal'] button",
-                "div[class*='popup'] button",
-                ".close",
-                "button[aria-label='Close']",
-                "svg[class*='close']",
-                "img[class*='close']"
-            ]
-            
-            for selector in close_selectors:
-                try:
-                    close_btn = WebDriverWait(self.driver, 5).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
-                    )
-                    close_btn.click()
-                    logger.info("通过关闭按钮关闭弹窗")
-                    time.sleep(2)
-                    return True
-                except:
-                    continue
-            
-            logger.warning("未找到弹窗关闭方式，继续执行...")
+                
             return False
             
         except Exception as e:
@@ -456,55 +418,87 @@ class MultiAccountManager:
         self.accounts = self.load_accounts()
     
     def load_accounts(self):
-        """从环境变量加载多账号信息"""
+        """从环境变量加载多账号信息，支持三种格式"""
         accounts = []
         
-        # 方法1: 从JSON字符串加载
-        accounts_json = os.getenv('LEAFLOW_ACCOUNTS', '')
+        logger.info("开始加载账号配置...")
+        
+        # 方法1: JSON格式多账号
+        accounts_json = os.getenv('LEAFLOW_ACCOUNTS', '').strip()
         if accounts_json:
             try:
-                accounts_data = json.loads(accounts_json)
+                logger.info("尝试解析JSON账号配置...")
+                # 清理JSON字符串（移除换行和多余空格）
+                cleaned_json = accounts_json.replace('\n', '').replace('\r', '').replace('\t', '')
+                accounts_data = json.loads(cleaned_json)
+                
+                if not isinstance(accounts_data, list):
+                    raise ValueError("JSON配置应该是账号列表")
+                
                 for account in accounts_data:
                     if 'email' in account and 'password' in account:
-                        accounts.append({
-                            'email': account['email'],
-                            'password': account['password']
-                        })
-                logger.info(f"从JSON加载了 {len(accounts)} 个账号")
-                return accounts
+                        email = account['email'].strip()
+                        password = account['password'].strip()
+                        if email and password:
+                            accounts.append({
+                                'email': email,
+                                'password': password
+                            })
+                
+                if accounts:
+                    logger.info(f"✅ 从JSON加载了 {len(accounts)} 个账号")
+                    return accounts
+                else:
+                    logger.warning("❌ JSON配置中没有找到有效的账号信息")
             except Exception as e:
-                logger.warning(f"解析JSON账号配置失败: {e}")
+                logger.warning(f"❌ 解析JSON账号配置失败: {e}")
         
-        # 方法2: 从分隔字符串加载（向后兼容）
-        emails_str = os.getenv('LEAFLOW_EMAILS', '')
-        passwords_str = os.getenv('LEAFLOW_PASSWORDS', '')
+        # 方法2: 逗号分隔格式
+        emails_str = os.getenv('LEAFLOW_EMAILS', '').strip()
+        passwords_str = os.getenv('LEAFLOW_PASSWORDS', '').strip()
         
         if emails_str and passwords_str:
-            emails = [email.strip() for email in emails_str.split(',')]
-            passwords = [password.strip() for password in passwords_str.split(',')]
-            
-            if len(emails) != len(passwords):
-                raise ValueError("邮箱和密码数量不匹配")
-            
-            for i in range(len(emails)):
-                accounts.append({
-                    'email': emails[i],
-                    'password': passwords[i]
-                })
-            logger.info(f"从分隔字符串加载了 {len(accounts)} 个账号")
-            return accounts
+            try:
+                logger.info("尝试解析逗号分隔账号配置...")
+                emails = [email.strip() for email in emails_str.split(',')]
+                passwords = [password.strip() for password in passwords_str.split(',')]
+                
+                if len(emails) != len(passwords):
+                    logger.error(f"❌ 邮箱和密码数量不匹配: {len(emails)} 邮箱 vs {len(passwords)} 密码")
+                else:
+                    for i in range(len(emails)):
+                        if emails[i] and passwords[i]:
+                            accounts.append({
+                                'email': emails[i],
+                                'password': passwords[i]
+                            })
+                    
+                    if accounts:
+                        logger.info(f"✅ 从逗号分隔格式加载了 {len(accounts)} 个账号")
+                        return accounts
+                    else:
+                        logger.warning("❌ 逗号分隔配置中没有找到有效的账号信息")
+            except Exception as e:
+                logger.warning(f"❌ 解析逗号分隔账号配置失败: {e}")
         
-        # 方法3: 单个账号（向后兼容）
-        single_email = os.getenv('LEAFLOW_EMAIL', '')
-        single_password = os.getenv('LEAFLOW_PASSWORD', '')
+        # 方法3: 单个账号
+        single_email = os.getenv('LEAFLOW_EMAIL', '').strip()
+        single_password = os.getenv('LEAFLOW_PASSWORD', '').strip()
         
         if single_email and single_password:
             accounts.append({
                 'email': single_email,
                 'password': single_password
             })
-            logger.info("加载了单个账号配置")
+            logger.info("✅ 加载了单个账号配置")
             return accounts
+        
+        # 如果所有方法都失败
+        logger.error("❌ 未找到有效的账号配置")
+        logger.error("请检查以下环境变量设置:")
+        logger.error("1. LEAFLOW_ACCOUNTS: JSON格式多账号")
+        logger.error("2. LEAFLOW_EMAILS 和 LEAFLOW_PASSWORDS: 逗号分隔格式")  
+        logger.error("3. LEAFLOW_EMAIL 和 LEAFLOW_PASSWORD: 单账号格式")
         
         raise ValueError("未找到有效的账号配置")
     
@@ -524,7 +518,9 @@ class MultiAccountManager:
             
             for email, success, result in results:
                 status = "✅" if success else "❌"
-                message += f"{status} {email}: {result}\n"
+                # 隐藏邮箱部分字符以保护隐私
+                masked_email = email[:3] + "***" + email[email.find("@"):]
+                message += f"{status} {masked_email}: {result}\n"
             
             url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
             data = {
@@ -549,7 +545,7 @@ class MultiAccountManager:
         results = []
         
         for i, account in enumerate(self.accounts, 1):
-            logger.info(f"处理第 {i}/{len(self.accounts)} 个账号: {account['email']}")
+            logger.info(f"处理第 {i}/{len(self.accounts)} 个账号")
             
             try:
                 auto_checkin = LeaflowAutoCheckin(account['email'], account['password'])
@@ -558,11 +554,12 @@ class MultiAccountManager:
                 
                 # 在账号之间添加间隔，避免请求过于频繁
                 if i < len(self.accounts):
-                    logger.info("等待5秒后处理下一个账号...")
-                    time.sleep(5)
+                    wait_time = 5
+                    logger.info(f"等待{wait_time}秒后处理下一个账号...")
+                    time.sleep(wait_time)
                     
             except Exception as e:
-                error_msg = f"处理账号 {account['email']} 时发生异常: {str(e)}"
+                error_msg = f"处理账号时发生异常: {str(e)}"
                 logger.error(error_msg)
                 results.append((account['email'], False, error_msg))
         
@@ -580,15 +577,16 @@ def main():
         overall_success, detailed_results = manager.run_all()
         
         if overall_success:
-            logger.info("所有账号签到成功")
+            logger.info("✅ 所有账号签到成功")
             exit(0)
         else:
-            logger.warning("部分账号签到失败")
+            success_count = sum(1 for _, success, _ in detailed_results if success)
+            logger.warning(f"⚠️ 部分账号签到失败: {success_count}/{len(detailed_results)} 成功")
             # 即使有失败，也不退出错误状态，因为可能部分成功
             exit(0)
             
     except Exception as e:
-        logger.error(f"脚本执行出错: {e}")
+        logger.error(f"❌ 脚本执行出错: {e}")
         exit(1)
 
 if __name__ == "__main__":
