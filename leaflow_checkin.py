@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
 Leaflow 多账号自动签到脚本
-支持JSON多账号、逗号分隔和单账号配置
+支持冒号分隔多账号和单账号配置
 """
 
 import os
 import time
 import logging
-import json
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -59,15 +58,28 @@ class LeaflowAutoCheckin:
             logger.info("尝试关闭初始弹窗...")
             time.sleep(3)  # 等待弹窗加载
             
+            # 方法1: 尝试点击页面左上角空白处关闭弹窗
             try:
                 actions = ActionChains(self.driver)
+                # 点击页面左上角(10,10)位置
                 actions.move_by_offset(10, 10).click().perform()
-                logger.info("已关闭弹窗")
+                logger.info("通过点击空白区域关闭弹窗")
                 time.sleep(2)
                 return True
             except:
                 pass
-                
+            
+            # 方法2: 尝试按ESC键
+            try:
+                from selenium.webdriver.common.keys import Keys
+                actions = ActionChains(self.driver)
+                actions.send_keys(Keys.ESCAPE).perform()
+                logger.info("通过ESC键关闭弹窗")
+                time.sleep(2)
+                return True
+            except:
+                pass
+    
             return False
             
         except Exception as e:
@@ -410,7 +422,7 @@ class LeaflowAutoCheckin:
                 self.driver.quit()
 
 class MultiAccountManager:
-    """多账号管理器"""
+    """多账号管理器 - 简化配置版本"""
     
     def __init__(self):
         self.telegram_bot_token = os.getenv('TELEGRAM_BOT_TOKEN', '')
@@ -418,70 +430,40 @@ class MultiAccountManager:
         self.accounts = self.load_accounts()
     
     def load_accounts(self):
-        """从环境变量加载多账号信息，支持三种格式"""
+        """从环境变量加载多账号信息，支持冒号分隔多账号和单账号"""
         accounts = []
         
         logger.info("开始加载账号配置...")
         
-        # 方法1: JSON格式多账号
-        accounts_json = os.getenv('LEAFLOW_ACCOUNTS', '').strip()
-        if accounts_json:
+        # 方法1: 冒号分隔多账号格式
+        accounts_str = os.getenv('LEAFLOW_ACCOUNTS', '').strip()
+        if accounts_str:
             try:
-                logger.info("尝试解析JSON账号配置...")
-                # 清理JSON字符串（移除换行和多余空格）
-                cleaned_json = accounts_json.replace('\n', '').replace('\r', '').replace('\t', '')
-                accounts_data = json.loads(cleaned_json)
+                logger.info("尝试解析冒号分隔多账号配置...")
+                account_pairs = accounts_str.split(',')
                 
-                if not isinstance(accounts_data, list):
-                    raise ValueError("JSON配置应该是账号列表")
-                
-                for account in accounts_data:
-                    if 'email' in account and 'password' in account:
-                        email = account['email'].strip()
-                        password = account['password'].strip()
+                for pair in account_pairs:
+                    if ':' in pair:
+                        email, password = pair.split(':', 1)
+                        email = email.strip()
+                        password = password.strip()
+                        
                         if email and password:
                             accounts.append({
                                 'email': email,
                                 'password': password
                             })
+                            logger.info(f"添加账号: {email}")
                 
                 if accounts:
-                    logger.info(f"✅ 从JSON加载了 {len(accounts)} 个账号")
+                    logger.info(f"✅ 从冒号分隔格式加载了 {len(accounts)} 个账号")
                     return accounts
                 else:
-                    logger.warning("❌ JSON配置中没有找到有效的账号信息")
+                    logger.warning("❌ 冒号分隔配置中没有找到有效的账号信息")
             except Exception as e:
-                logger.warning(f"❌ 解析JSON账号配置失败: {e}")
+                logger.warning(f"❌ 解析冒号分隔账号配置失败: {e}")
         
-        # 方法2: 逗号分隔格式
-        emails_str = os.getenv('LEAFLOW_EMAILS', '').strip()
-        passwords_str = os.getenv('LEAFLOW_PASSWORDS', '').strip()
-        
-        if emails_str and passwords_str:
-            try:
-                logger.info("尝试解析逗号分隔账号配置...")
-                emails = [email.strip() for email in emails_str.split(',')]
-                passwords = [password.strip() for password in passwords_str.split(',')]
-                
-                if len(emails) != len(passwords):
-                    logger.error(f"❌ 邮箱和密码数量不匹配: {len(emails)} 邮箱 vs {len(passwords)} 密码")
-                else:
-                    for i in range(len(emails)):
-                        if emails[i] and passwords[i]:
-                            accounts.append({
-                                'email': emails[i],
-                                'password': passwords[i]
-                            })
-                    
-                    if accounts:
-                        logger.info(f"✅ 从逗号分隔格式加载了 {len(accounts)} 个账号")
-                        return accounts
-                    else:
-                        logger.warning("❌ 逗号分隔配置中没有找到有效的账号信息")
-            except Exception as e:
-                logger.warning(f"❌ 解析逗号分隔账号配置失败: {e}")
-        
-        # 方法3: 单个账号
+        # 方法2: 单账号格式
         single_email = os.getenv('LEAFLOW_EMAIL', '').strip()
         single_password = os.getenv('LEAFLOW_PASSWORD', '').strip()
         
@@ -496,9 +478,8 @@ class MultiAccountManager:
         # 如果所有方法都失败
         logger.error("❌ 未找到有效的账号配置")
         logger.error("请检查以下环境变量设置:")
-        logger.error("1. LEAFLOW_ACCOUNTS: JSON格式多账号")
-        logger.error("2. LEAFLOW_EMAILS 和 LEAFLOW_PASSWORDS: 逗号分隔格式")  
-        logger.error("3. LEAFLOW_EMAIL 和 LEAFLOW_PASSWORD: 单账号格式")
+        logger.error("1. LEAFLOW_ACCOUNTS: 冒号分隔多账号 (email1:pass1,email2:pass2)")
+        logger.error("2. LEAFLOW_EMAIL 和 LEAFLOW_PASSWORD: 单账号")
         
         raise ValueError("未找到有效的账号配置")
     
