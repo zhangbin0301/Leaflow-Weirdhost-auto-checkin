@@ -519,7 +519,7 @@ class MultiAccountManager:
             success_count = sum(1 for _, success, _ in results if success)
             total_count = len(results)
             
-            message = f"🏆 Leaflow签到通知\n"
+            message = f"🏆 Leaflow多账号签到汇总\n"
             message += f"📊 成功: {success_count}/{total_count}\n\n"
             
             for email, success, result in results:
@@ -558,8 +558,8 @@ class MultiAccountManager:
                 
                 # 在账号之间添加间隔，避免请求过于频繁
                 if i < len(self.accounts):
-                    logger.info("等待10秒后处理下一个账号...")
-                    time.sleep(10)
+                    logger.info("等待5秒后处理下一个账号...")
+                    time.sleep(5)
                     
             except Exception as e:
                 error_msg = f"处理账号 {account['email']} 时发生异常: {str(e)}"
