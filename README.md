@@ -15,24 +15,6 @@ Leaflow 多账号自动签到脚本，支持 Telegram 通知和 GitHub Actions �
 - 🔄 智能重试机制，提高签到成功率
 - 📊 详细的日志记录和错误处理
 
-## 环境要求
-
-- Python 3.7 或更高版本
-- Chrome 浏览器（用于本地运行）
-- ChromeDriver（用于本地运行）
-
-## 安装依赖
-
-```bash
-pip install -r requirements.txt
-```
-
-### 依赖说明
-
-- `selenium==4.15.0`: Web 自动化测试工具
-- `requests==2.31.0`: HTTP 请求库
-- `webdriver-manager==4.0.1`: WebDriver 管理工具
-
 ## 使用方法
 
 ### 1. 本地运行
@@ -117,5 +99,6 @@ export TELEGRAM_CHAT_ID="your_telegram_chat_id"
 - 请遵守网站的使用条款，合理使用自动化脚本
 
 ## 许可证
+
 
 本项目采用 MIT 许可证，详情请见 [LICENSE](LICENSE) 文件。
