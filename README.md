@@ -21,7 +21,7 @@ Leaflow 多账号自动签到脚本，支持 Telegram 通知和 GitHub Actions �
 
 脚本支持三种方式配置账号信息：
 
-##### 方式一：单个账号（向后兼容）
+##### 方式一：单个账号
 ```bash
 LEAFLOW_EMAIL    your_email@example.com
 LEAFLOW_PASSWORD    your_password
@@ -29,27 +29,11 @@ LEAFLOW_PASSWORD    your_password
 
 ##### 方式二：多个账号（分隔符方式，向后兼容）
 ```bash
-LEAFLOW_EMAILS    email1@example.com,email2@example.com
-
-LEAFLOW_PASSWORDS    password1,password2 
-```
-
-##### 方式三：多个账号（推荐 JSON 格式）
-```bash
 LEAFLOW_ACCOUNTS
 
-[   
-    {
-	"email": "email1@example.com",
-	"password": "password1"
-    },
-    {
-	"email": "email2@example.com",
-	"password": "password2"
-	}
-......添加更多账号(实际使用请删除这句话)
-]
+email1@example.com:password1,email2@example.com:password2
 ```
+
 
 
 ### 2. GitHub Actions 自动运行
@@ -67,8 +51,8 @@ LEAFLOW_ACCOUNTS
 要启用 Telegram 通知，请设置以下环境变量：
 
 ```bash
-export TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
-export TELEGRAM_CHAT_ID="your_telegram_chat_id"
+TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
+TELEGRAM_CHAT_ID="your_telegram_chat_id"
 ```
 
 ## 配置说明
@@ -77,9 +61,7 @@ export TELEGRAM_CHAT_ID="your_telegram_chat_id"
 |---------|------|------|
 | `LEAFLOW_EMAIL` | 否* | 单个账号邮箱（方式一） |
 | `LEAFLOW_PASSWORD` | 否* | 单个账号密码（方式一） |
-| `LEAFLOW_EMAILS` | 否* | 多个账号邮箱，逗号分隔（方式二） |
-| `LEAFLOW_PASSWORDS` | 否* | 多个账号密码，逗号分隔（方式二） |
-| `LEAFLOW_ACCOUNTS` | 否* | 多个账号信息 JSON 字符串（方式三，推荐） |
+| `LEAFLOW_ACCOUNTS` | 否* | 多个账号密码，逗号分隔（方式二,推荐） |
 | `TELEGRAM_BOT_TOKEN` | 否 | Telegram Bot Token |
 | `TELEGRAM_CHAT_ID` | 否 | Telegram Chat ID |
 
@@ -108,6 +90,7 @@ export TELEGRAM_CHAT_ID="your_telegram_chat_id"
 
 
 本项目采用 MIT 许可证，详情请见 [LICENSE](LICENSE) 文件。
+
 
 
 
