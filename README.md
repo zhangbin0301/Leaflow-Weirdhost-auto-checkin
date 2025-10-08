@@ -40,7 +40,7 @@ email1@example.com:password1,email2@example.com:password2
 
 1. Fork 本仓库
 2. 在仓库 Settings > Secrets and variables > Actions 中添加以下 secrets：
-   - `LEAFLOW_ACCOUNTS`: 账号信息（JSON 格式）
+   - `LEAFLOW_ACCOUNTS`: 账号信息(账号密码之间英文冒号分隔,多账号之间英文逗号分隔)
    - `TELEGRAM_BOT_TOKEN`（可选）: Telegram Bot Token
    - `TELEGRAM_CHAT_ID`（可选）: Telegram Chat ID
 
@@ -90,6 +90,7 @@ TELEGRAM_CHAT_ID="your_telegram_chat_id"
 
 
 本项目采用 MIT 许可证，详情请见 [LICENSE](LICENSE) 文件。
+
 
 
 
