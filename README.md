@@ -17,34 +17,34 @@ Leaflow 多账号自动签到脚本，支持 Telegram 通知和 GitHub Actions �
 
 ## 使用方法
 
-### 1. 本地运行
-
 #### 配置账号信息
 
 脚本支持三种方式配置账号信息：
 
 ##### 方式一：单个账号（向后兼容）
 ```bash
-export LEAFLOW_EMAIL="your_email@example.com"
-export LEAFLOW_PASSWORD="your_password"
+LEAFLOW_EMAIL    your_email@example.com
+LEAFLOW_PASSWORD    your_password
 ```
 
 ##### 方式二：多个账号（分隔符方式，向后兼容）
 ```bash
-export LEAFLOW_EMAILS="email1@example.com,email2@example.com"
-export LEAFLOW_PASSWORDS="password1,password2"
+LEAFLOW_EMAILS    email1@example.com,email2@example.com
+
+LEAFLOW_PASSWORDS    password1,password2 
 ```
 
 ##### 方式三：多个账号（推荐 JSON 格式）
 ```bash
-export LEAFLOW_ACCOUNTS='[{"email":"email1@example.com","password":"password1"},{"email":"email2@example.com","password":"password2"}]'
+LEAFLOW_ACCOUNTS
+
+[
+{"email":"email1@example.com","password":"password1"},
+{"email":"email2@example.com","password":"password2"}
+...添加更多账号
+]
 ```
 
-#### 运行脚本
-
-```bash
-python leaflow_checkin.py
-```
 
 ### 2. GitHub Actions 自动运行
 
@@ -102,3 +102,4 @@ export TELEGRAM_CHAT_ID="your_telegram_chat_id"
 
 
 本项目采用 MIT 许可证，详情请见 [LICENSE](LICENSE) 文件。
+
