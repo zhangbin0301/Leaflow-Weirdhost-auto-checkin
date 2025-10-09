@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Leaflow 多账号自动签到脚本
-支持冒号分隔多账号和单账号配置
+变量名：LEAFLOW_ACCOUNTS
+变量值：邮箱1:密码1,邮箱2:密码2,邮箱3:密码3
 """
 
 import os
@@ -576,3 +577,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
