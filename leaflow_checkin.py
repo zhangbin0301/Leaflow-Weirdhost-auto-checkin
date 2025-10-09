@@ -499,7 +499,7 @@ class MultiAccountManager:
             success_count = sum(1 for _, success, _ in results if success)
             total_count = len(results)
             
-            message = f"🏆 Leaflow多账号签到汇总\n"
+            message = f"🏆 Leaflow自动签到通知\n"
             message += f"📊 成功: {success_count}/{total_count}\n\n"
             
             for email, success, result in results:
@@ -577,4 +577,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
