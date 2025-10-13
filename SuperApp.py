@@ -16,7 +16,7 @@ def run(playwright: Playwright) -> None:
     LOGIN_URL = os.environ.get('LOGIN_URL', 'https://hub.weirdhost.xyz/')
     COOKIE_FILE = os.environ.get('COOKIE_FILE', 'cookies.json')
     remember_web_cookie = os.environ.get('REMEMBER_WEB_COOKIE', 'eyJpdiI6IjI0VjJiOUZHTWhnVW02L1o4QWMyNFE9PSIsInZhbHVlIjoiZ3V6eXVmbERWbTJzbnV2eHliSkNwUllRUWgrNGV2V0ZLWXpDRnRhTlgwbWJxeGNDN1V2TjZZT0h2YlNCWVFTbFBySE5TWG5kTUpoZlFMTGQ0bHgyMW9SYzAzZGNNMnMwME5mQXN5ZTNzS0tMRkdndU1CRE1pQm93UEJyMFBIVnZxcXh6b0pDUXAxcFlwbWFIMmN5c0EzUFZGOEk5WisvSWl4Z0JrOXJaaHBuTnN5eEtEUTk3WmQ5b2lLeW9qdktJL2RvYWp4QTZCZFJiVzZGZTFFUlBzdzM3NWxYcEtrU1NkK0lwSGhhaG1NVT0iLCJtYWMiOiIyNTUwZjcyMGIyYWYxZDllMTllMjg3YjNmYTEwMThkOWUzMTNmOTNhY2E0MGJiZTM5MGYzOGM3MTU4MmM1YTU1IiwidGFnIjoiIn0%3D')
-    #remember_web开头的值（dis登入才有，账号登入没有这项）
+    #F12 cookie remember_web开头的值（dis登入才有，账号登入没有这项）
     
     # 启用无头模式 (在 CI/CD 中推荐)
     # 将 headless=False 改为 True 为无头模式
