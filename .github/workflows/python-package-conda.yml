@@ -1,0 +1,46 @@
+name: 自动签到加继期
+
+on:
+  schedule:
+    - cron: '0 5 * * *' # 每天UTC时间05:00运行（北京时间13:00）
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  add_time_check_in:
+    runs-on: ubuntu-latest
+    env:
+      LEAFLOW_EMAIL: ${{ secrets.LEAFLOW_EMAIL }}
+      LEAFLOW_PASSWORD: ${{ secrets.LEAFLOW_PASSWORD }}
+      WEIRDHOST_EMAIL: ${{ secrets.WEIRDHOST_EMAIL }}
+      WEIRDHOST_PASSWORD: ${{ secrets.WEIRDHOST_PASSWORD }}
+      REMEMBER_WEB_COOKIE: ${{ secrets.REMEMBER_WEB_COOKIE }}
+      LOGIN_URL: ${{ secrets.LOGIN_URL }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Playwright and dependencies # 安装 Playwright 及其浏览器依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          pip install pytz
+          playwright install --with-deps chromium # 安装 Chromium 浏览器及其运行所需的所有依赖
+
+      - name: Run check in Script # 运行你的 Python 脚本
+        run: python SuperApp.py
+
+      - name: Upload Error Screenshot
+        uses: actions/upload-artifact@v4
+        if: always() # 总是运行，确保无论前一步成功或失败，都能检查是否有截图需要上传
+        with:
+          name: error-screenshot
+          path: |
+            error_screenshot.png
+            final_error_screenshot.png
+          retention-days: 1
