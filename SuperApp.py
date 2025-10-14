@@ -15,7 +15,7 @@ def run(playwright: Playwright) -> None:
     WEIRDHOST_PASSWORD = os.environ.get('WEIRDHOST_PASSWORD', '987277984')
     LOGIN_URL = os.environ.get('LOGIN_URL', 'https://hub.weirdhost.xyz/server/4caf36df')
     COOKIE_FILE = os.environ.get('COOKIE_FILE', 'cookies.json')
-    remember_web_cookie = os.environ.get('REMEMBER_WEB_COOKIE', '')
+    remember_web_cookie = os.environ.get('REMEMBER_WEB_COOKIE', 'eyJpdiI6IjZQdGZMZ0cyMVd2eHU2Y0NMTmZsZEE9PSIsInZhbHVlIjoiTVA4M3BkNEhXcVFFVWhwRlVxTTYxVTA2dEhRMzZ1UUVIaXA4UWwxd2xGRFRSa2RqWm9Md0ZTSVc0NjRucVk2MytIeUNlYUJ2WTJUQU9CN09xWkpVdFVzWWRmenY2RExEVXphalc5VmRaNlpsMzgvZXdTZ0VkdmNZNllRT25Cdy9zak82N3gyd280MWRqeWt4QW4xWlI5Zzd2UUNvV2RRZG5RQ2VDTWx4QlpRMkw3bVBGWmtIbDd6ZHZTYnFEd3FBK084OVpTVmpxV1Q5SnE0ZThJc05Jc1JvZ2Rnc3lCR09WWEk2MU1lODZMMD0iLCJtYWMiOiI1NjZkZTc4NjhiMjUxYzg0NzFmMTZkZTdhZTQ3MDliODc0YmVlNzk5ZWRkYjJlMGQwODRkZTlhODZhZTc2MTNkIiwidGFnIjoiIn0%3D')
     #F12 cookie remember_web开头的值（dis登入才有，账号登入没有这项）
 
     # Telegram Bot 通知配置（可选）
