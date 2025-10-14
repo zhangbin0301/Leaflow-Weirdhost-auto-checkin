@@ -19,8 +19,8 @@ def run(playwright: Playwright) -> None:
     #F12 cookie remember_web开头的值（dis登入才有，账号登入没有这项）
 
     # Telegram Bot 通知配置（可选）
-    TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '5824972634:AAGJG-FBAgPljwpnlnD8Lk5Pm2r1QbSk1AI')
-    TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '558914831')
+    TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
+    TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
 
     # 启用无头模式 (在 CI/CD 中推荐)
     # 将 headless=False 改为 True 为无头模式
