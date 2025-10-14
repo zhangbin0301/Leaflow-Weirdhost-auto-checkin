@@ -1,13 +1,14 @@
-name: Super Leaflow自动签到加weirdhost继期
+name: 自动签到加继期
 
 on:
   schedule:
-    - cron: '0 5 * * *' # 每天UTC时间05:00运行（北京时间13:00）
+    - cron: '0 2 * * *' # 每天UTC时间02:00运行（北京时间10:00）
   workflow_dispatch:  # 允许手动触发
 
 jobs:
   add_time_check_in:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       LEAFLOW_EMAIL: ${{ secrets.LEAFLOW_EMAIL }}
       LEAFLOW_PASSWORD: ${{ secrets.LEAFLOW_PASSWORD }}
@@ -15,6 +16,8 @@ jobs:
       WEIRDHOST_PASSWORD: ${{ secrets.WEIRDHOST_PASSWORD }}
       REMEMBER_WEB_COOKIE: ${{ secrets.REMEMBER_WEB_COOKIE }}
       LOGIN_URL: ${{ secrets.LOGIN_URL }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
     steps:
       - name: Checkout repository
@@ -35,12 +38,13 @@ jobs:
       - name: Run check in Script # 运行你的 Python 脚本
         run: python SuperApp.py
 
-      - name: Upload Error Screenshot
+      - name: Upload Error Screenshot and cookie.json
         uses: actions/upload-artifact@v4
         if: always() # 总是运行，确保无论前一步成功或失败，都能检查是否有截图需要上传
         with:
-          name: error-screenshot
+          name: error-screenshot and cookie.json
           path: |
             error_screenshot.png
             final_error_screenshot.png
+            cookie.json
           retention-days: 1
