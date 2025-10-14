@@ -15,9 +15,13 @@ def run(playwright: Playwright) -> None:
     WEIRDHOST_PASSWORD = os.environ.get('WEIRDHOST_PASSWORD', '987277984')
     LOGIN_URL = os.environ.get('LOGIN_URL', 'https://hub.weirdhost.xyz/server/4caf36df')
     COOKIE_FILE = os.environ.get('COOKIE_FILE', 'cookies.json')
-    remember_web_cookie = os.environ.get('REMEMBER_WEB_COOKIE', 'eyJpdiI6IjZQdGZMZ0cyMVd2eHU2Y0NMTmZsZEE9PSIsInZhbHVlIjoiTVA4M3BkNEhXcVFFVWhwRlVxTTYxVTA2dEhRMzZ1UUVIaXA4UWwxd2xGRFRSa2RqWm9Md0ZTSVc0NjRucVk2MytIeUNlYUJ2WTJUQU9CN09xWkpVdFVzWWRmenY2RExEVXphalc5VmRaNlpsMzgvZXdTZ0VkdmNZNllRT25Cdy9zak82N3gyd280MWRqeWt4QW4xWlI5Zzd2UUNvV2RRZG5RQ2VDTWx4QlpRMkw3bVBGWmtIbDd6ZHZTYnFEd3FBK084OVpTVmpxV1Q5SnE0ZThJc05Jc1JvZ2Rnc3lCR09WWEk2MU1lODZMMD0iLCJtYWMiOiI1NjZkZTc4NjhiMjUxYzg0NzFmMTZkZTdhZTQ3MDliODc0YmVlNzk5ZWRkYjJlMGQwODRkZTlhODZhZTc2MTNkIiwidGFnIjoiIn0%3D')
+    remember_web_cookie = os.environ.get('REMEMBER_WEB_COOKIE', '')
     #F12 cookie remember_web开头的值（dis登入才有，账号登入没有这项）
-    
+
+    # Telegram Bot 通知配置（可选）
+    TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '5824972634:AAGJG-FBAgPljwpnlnD8Lk5Pm2r1QbSk1AI')
+    TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '558914831')
+
     # 启用无头模式 (在 CI/CD 中推荐)
     # 将 headless=False 改为 True 为无头模式
     browser = playwright.chromium.launch(headless=True)
@@ -25,6 +29,28 @@ def run(playwright: Playwright) -> None:
     page = context.new_page()
     # 用于追踪登录状态
     is_logged_in = False
+
+    # 推送telegram消息
+    def send_telegram_message(message):
+        if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+            print("Telegram bot token or chat ID not configured. Skipping Telegram notification.")
+            return False
+
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": message
+        }
+
+        try:
+            response = requests.post(url, json=payload)
+            response.raise_for_status()
+            print("Telegram notification sent successfully.")
+            return True
+        except Exception as e:
+            print(f"Failed to send Telegram notification: {e}")
+            return False
 
     # 保存为cookies.json
     def save_cookies(context):
@@ -41,7 +67,7 @@ def run(playwright: Playwright) -> None:
                 print(f"✅ 已从文件 '{file_path}' 成功加载 {len(cookies)} 个 cookies。")
                 return cookies
         except Exception as e:
-            print(f"❌ 错误：加载 cookies 时发生未知错误：{e}")
+            print(f"❌ 错误：加载cookies文件时发生未知错误：{e}")
             return None
 
     # 尝试使用指定的 cookies 登录并返回是否成功
@@ -71,7 +97,13 @@ def run(playwright: Playwright) -> None:
     # --- leaflow执行步骤 ---
     try:
         print("开始执行leaflow签到任务...")
-        page.goto("https://leaflow.net/")
+        # 增加 goto 的超时时间到 60 秒（60000ms）将等待条件设置为 "domcontentloaded" 而非默认的 "load"
+        page.goto(
+            "https://leaflow.net/",
+            timeout=60000,
+            wait_until="domcontentloaded"
+        )
+        # page.goto("https://leaflow.net/")
 
         page.get_by_role("button", name="Close").click()
         page.get_by_role("button", name="登录", exact=True).click()
@@ -132,7 +164,12 @@ def run(playwright: Playwright) -> None:
         # --- 方案二：如果 Cookie 方案失败或未提供，则使用邮箱密码登录 ---
         if not is_logged_in and WEIRDHOST_EMAIL and WEIRDHOST_PASSWORD:
             print("❌ Cookie 无效或不存在，使用 EMAIL/PASSWORD 开始执行登录任务...")
-            page.goto("https://hub.weirdhost.xyz/auth/login")
+            page.goto(
+                "https://hub.weirdhost.xyz/auth/login",
+                timeout=60000,
+                wait_until="domcontentloaded"
+            )
+            # page.goto("https://hub.weirdhost.xyz/auth/login")
 
             # 执行登录步骤...
             page.locator("input[name=\"username\"]").fill(WEIRDHOST_EMAIL)
@@ -158,7 +195,7 @@ def run(playwright: Playwright) -> None:
             # 确保当前在正确的页面
             # page.goto(LOGIN_URL, wait_until='domcontentloaded')
 
-            # 后续的日期检查和点击操作
+            # 日期检查和点击操作
             date_locator = page.get_by_text(re.compile(r"유통기한\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:"))
             full_text = date_locator.text_content(timeout=20000) # 20秒
             print(f"定位到的元素内容: {full_text}")
@@ -180,6 +217,14 @@ def run(playwright: Playwright) -> None:
                 else:
                     page.get_by_role("button", name="시간추가").click()
                     print("✅ 已经进入24小时继期窗口，成功完成继期。")
+                    # 发送到Telegram消息
+                    CST = pytz.timezone('Asia/Shanghai')
+                    current_time = datetime.now(CST).strftime("%Y-%m-%d %H:%M")
+                    content = f"Server ID: {WEIRDHOST_EMAIL or 'Unknown'}\n"
+                    content += f"Renew status: Success\n"
+                    content += f"Last renewal time: {current_time}\n"
+                    telegram_message = f"**Weirdhost Server Renewal Notification**\n{content}"
+                    send_telegram_message(telegram_message)
             else:
                 print("❌ 未能在页面上找到有效日期字符串。")
         else:
