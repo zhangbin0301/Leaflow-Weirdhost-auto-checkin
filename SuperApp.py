@@ -6,30 +6,57 @@ import time
 import requests
 from datetime import datetime, timedelta
 from playwright.sync_api import Playwright, sync_playwright, expect, TimeoutError
+from typing import List, Tuple
+
+# 定义账户凭证类型
+AccountCredentials = List[Tuple[str, str]]
+
+def parse_accounts(accounts_str: str) -> AccountCredentials:
+    # 从账户字符串中解析账户凭证。 "邮箱1,密码1 邮箱2,密码2"
+    accounts: AccountCredentials = []
+
+    # 账户之间用空格分隔
+    account_pairs = [pair.strip() for pair in accounts_str.split(' ') if pair.strip()]
+
+    for pair in account_pairs:
+        # 邮箱和密码之间用逗号分隔
+        parts = [part.strip() for part in pair.split(',') if part.strip()]
+
+        if len(parts) == 2:
+            accounts.append((parts[0], parts[1]))
+        else:
+            print(f"⚠️ 警告：跳过格式错误的账户对 '{pair}'。期待 '邮箱,密码' 格式。")
+
+    return accounts
+
 
 def run(playwright: Playwright) -> None:
-    # 环境变量
-    LEAFLOW_EMAIL = os.environ.get('LEAFLOW_EMAIL', 'zhangbin0301@gmail.com')
-    LEAFLOW_PASSWORD = os.environ.get('LEAFLOW_PASSWORD', '584yyscjZB!')
+    # --- 环境变量配置 ---
+    # ---------------------------------------------------------------------------------
+    # 用户可编辑区域：在这里直接填写您的 Leaflow 多账户 (格式: "邮箱1,密码1 邮箱2,密码2")
+    # 如果设置了 LEAFLOW_ACCOUNTS 环境变量，它将覆盖此处的默认值。
+    # ---------------------------------------------------------------------------------
+    # 示例: "test1@example.com,pass1 test2@example.com,pass2"
+    DEFAULT_LEAFLOW_ACCOUNTS_STR = ""
 
-    WEIRDHOST_EMAIL = os.environ.get('WEIRDHOST_EMAIL', 'zhangbin0301@qq.com')
-    WEIRDHOST_PASSWORD = os.environ.get('WEIRDHOST_PASSWORD', '987277984')
-    LOGIN_URL = os.environ.get('LOGIN_URL', 'https://hub.weirdhost.xyz/server/4caf36df')
+    # 获取账户源字符串：优先从环境变量 'LEAFLOW_ACCOUNTS' 获取，否则使用默认字符串。
+    accounts_source_str = os.environ.get('LEAFLOW_ACCOUNTS', DEFAULT_LEAFLOW_ACCOUNTS_STR)
+    # Leaflow 多账户配置
+    LEAFLOW_ACCOUNTS = parse_accounts(accounts_source_str)
+
+    # Weirdhost 单账户配置 (保持原样)
+    WEIRDHOST_EMAIL = os.environ.get('WEIRDHOST_EMAIL', '')
+    WEIRDHOST_PASSWORD = os.environ.get('WEIRDHOST_PASSWORD', '')
+    LOGIN_URL = os.environ.get('LOGIN_URL', '')
     COOKIE_FILE = os.environ.get('COOKIE_FILE', 'cookies.json')
-    remember_web_cookie = os.environ.get('REMEMBER_WEB_COOKIE', 'eyJpdiI6IjZQdGZMZ0cyMVd2eHU2Y0NMTmZsZEE9PSIsInZhbHVlIjoiTVA4M3BkNEhXcVFFVWhwRlVxTTYxVTA2dEhRMzZ1UUVIaXA4UWwxd2xGRFRSa2RqWm9Md0ZTSVc0NjRucVk2MytIeUNlYUJ2WTJUQU9CN09xWkpVdFVzWWRmenY2RExEVXphalc5VmRaNlpsMzgvZXdTZ0VkdmNZNllRT25Cdy9zak82N3gyd280MWRqeWt4QW4xWlI5Zzd2UUNvV2RRZG5RQ2VDTWx4QlpRMkw3bVBGWmtIbDd6ZHZTYnFEd3FBK084OVpTVmpxV1Q5SnE0ZThJc05Jc1JvZ2Rnc3lCR09WWEk2MU1lODZMMD0iLCJtYWMiOiI1NjZkZTc4NjhiMjUxYzg0NzFmMTZkZTdhZTQ3MDliODc0YmVlNzk5ZWRkYjJlMGQwODRkZTlhODZhZTc2MTNkIiwidGFnIjoiIn0%3D')
-    #F12 cookie remember_web开头的值（dis登入才有，账号登入没有这项）
+    remember_web_cookie = os.environ.get('REMEMBER_WEB_COOKIE', '')
 
     # Telegram Bot 通知配置（可选）
     TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
     TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
 
-    # 启用无头模式 (在 CI/CD 中推荐)
-    # 将 headless=False 改为 True 为无头模式
+    # 启用无头模式
     browser = playwright.chromium.launch(headless=True)
-    context = browser.new_context()
-    page = context.new_page()
-    # 用于追踪登录状态
-    is_logged_in = False
 
     # 推送telegram消息
     def send_telegram_message(message):
@@ -53,14 +80,17 @@ def run(playwright: Playwright) -> None:
             print(f"Failed to send Telegram notification: {e}")
             return False
 
-    # 保存为cookies.json
+    # 保存为 cookies.json (只在 Weirdhost 单账户逻辑中使用)
     def save_cookies(context):
         cookies = context.cookies()
-        with open(COOKIE_FILE, 'w') as f:
-            json.dump(cookies, f)
-        print(f"Cookies已保存到{COOKIE_FILE}")
+        try:
+            with open(COOKIE_FILE, 'w') as f:
+                json.dump(cookies, f)
+            print(f"Cookies已保存到{COOKIE_FILE}")
+        except Exception as e:
+            print(f"❌ 错误：保存cookies文件时发生未知错误：{e}")
 
-    # 从文件加载cookies
+    # 从文件加载cookies (只在 Weirdhost 单账户逻辑中使用)
     def load_cookies_from_file(file_path):
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -68,10 +98,10 @@ def run(playwright: Playwright) -> None:
                 print(f"✅ 已从文件 '{file_path}' 成功加载 {len(cookies)} 个 cookies。")
                 return cookies
         except Exception as e:
-            print(f"❌ 错误：加载cookies文件时发生未知错误：{e}")
+            print(f"❌ 错误：加载 {COOKIE_FILE} 文件时发生未知错误或 {COOKIE_FILE} 文件文件不存在")
             return None
 
-    # 尝试使用指定的 cookies 登录并返回是否成功
+    # 尝试使用指定的 cookies 登录并返回是否成功 (只在 Weirdhost 单账户逻辑中使用)
     def try_cookie_login(context, page, cookies_to_add: list, login_url: str) -> bool:
         if not cookies_to_add:
             return False
@@ -79,11 +109,8 @@ def run(playwright: Playwright) -> None:
         try:
             context.add_cookies(cookies_to_add)
             print("🍪 Cookies 已添加到浏览器上下文，尝试访问目标 URL。")
-
-            # 访问目标 URL，测试是否成功保持登录状态
             page.goto(login_url, wait_until='domcontentloaded')
 
-            # 验证是否成功登录 (假设登录页面包含 "auth/login")
             if "auth/login" not in page.url:
                 print("✅ Cookie 登录成功，已进入继期页面。")
                 return True
@@ -95,154 +122,187 @@ def run(playwright: Playwright) -> None:
             print(f"⚠️ Cookie 登录尝试时发生错误：{e}")
             return False
 
-    # --- leaflow执行步骤 ---
-    try:
-        print("开始执行leaflow签到任务...")
-        # 增加 goto 的超时时间到 60 秒（60000ms）将等待条件设置为 "domcontentloaded" 而非默认的 "load"
-        page.goto(
-            "https://leaflow.net/",
-            timeout=60000,
-            wait_until="domcontentloaded"
-        )
-        # page.goto("https://leaflow.net/")
+    # --- LEAFLOW 多账户执行步骤 ---
+    if LEAFLOW_ACCOUNTS:
+        print(f"\n--- 开始执行 Leaflow 多账户签到任务 ({len(LEAFLOW_ACCOUNTS)} 个账户) ---")
 
-        page.get_by_role("button", name="Close").click()
-        page.get_by_role("button", name="登录", exact=True).click()
-        page.get_by_role("textbox", name="邮箱或手机号").fill(LEAFLOW_EMAIL)
-        page.get_by_role("textbox", name="密码").fill(LEAFLOW_PASSWORD)
+        for index, (email, password) in enumerate(LEAFLOW_ACCOUNTS):
+            # 为每个账户创建新的、隔离的浏览器上下文和页面
+            context = browser.new_context()
+            page = context.new_page()
+            email_id = email.split('@')[0]
+            print(f"\n[Leaflow - {email_id}] 账号 #{index + 1} ({email}) 开始执行...")
 
-        page.get_by_role("button", name="登录 / 注册").click()
-        print("已完成登录尝试...")
+            try:
+                print(f"[{email_id}] 🚀 导航至 leaflow.net...")
+                page.goto(
+                    "https://leaflow.net/",
+                    timeout=60000,
+                    wait_until="domcontentloaded"
+                )
 
-        page.get_by_role("link", name="工作区").click()
-        page.get_by_text("签到试用").click()
-        print("已进入签到页面...")
+                page.get_by_role("button", name="Close").click()
+                page.get_by_role("button", name="登录", exact=True).click()
+                page.get_by_role("textbox", name="邮箱或手机号").fill(email)
+                page.get_by_role("textbox", name="密码").fill(password)
+
+                page.get_by_role("button", name="登录 / 注册").click()
+
+                page.wait_for_selector('text="工作区"', timeout=20000)
+                print(f"[{email_id}] 已完成登录尝试。")
+
+                page.get_by_role("link", name="工作区").click()
+                page.get_by_text("签到试用").click()
+                print(f"[{email_id}] 已进入签到页面...")
+
+                try:
+                    page.locator("#app iframe").content_frame.get_by_role("button", name=" 立即签到").click()
+                    print(f"✅ 任务执行成功: [{email_id}] 签到操作已完成。")
+                    content = f"LEAFLOW帐号：{email_id} 签到操作已完成！"
+                    telegram_message = f"**LEAFLOW签到信息**\n{content}"
+                    send_telegram_message(telegram_message)
+                except Exception as e:
+                    print(f"✅ [{email_id}] 今日已经签到！")
+                    content = f"LEAFLOW帐号：{email_id} 今日已经签到！"
+                    telegram_message = f"**LEAFLOW签到信息**\n{content}"
+                    send_telegram_message(telegram_message)
+
+            except TimeoutError as te:
+                print(f"❌ 任务执行失败：Playwright 操作超时 ({te})")
+                page.screenshot(path="error_screenshot.png") # 超时时截图
+            except Exception as e:
+                print("❌ 任务执行失败！")
+                page.screenshot(path="final_error_screenshot.png") # 失败时强制截图
+                print(f"详细错误信息: {e}")
+            finally:
+                # 隔离清理：关闭当前账户的页面和上下文
+                page.close()
+                context.close()
+                time.sleep(10) # 账户间延迟，确保资源释放
+
+        time.sleep(30) # 两个主要任务之间的延迟
+    else:
+         print("\n--- ℹ️ 跳过 Leaflow 任务：未配置 LEAFLOW_ACCOUNTS。 ---")
+         time.sleep(5) # 保持延迟
+
+
+    # --- WEIRDHOST 单账户执行步骤 (保持原样，并增加隔离) ---
+    is_logged_in = False
+
+    if WEIRDHOST_EMAIL or remember_web_cookie:
+        print(f"\n--- 开始执行weirdhost继期任务...")
+        context = browser.new_context() # 新的上下文
+        page = context.new_page()       # 新的页面
 
         try:
-            page.locator("#app iframe").content_frame.get_by_role("button", name=" 立即签到").click()
-            print("✅ 任务执行成功: 签到操作已完成。")
-        except Exception as e:
-            print("✅ 今日已经签到！")
+            # --- 方案一：优先尝试使用 Cookie 会话登录 ---
+            loaded_cookies = load_cookies_from_file(COOKIE_FILE)
+            if loaded_cookies:
+                is_logged_in = try_cookie_login(context, page, loaded_cookies, LOGIN_URL)
 
-    except TimeoutError as te:
-        print(f"❌ 任务执行失败：Playwright 操作超时 ({te})")
-        page.screenshot(path="error_screenshot.png") # 超时时截图
-    except Exception as e:
-        print("❌ 任务执行失败！")
-        page.screenshot(path="final_error_screenshot.png") # 失败时强制截图
-        print(f"详细错误信息: {e}")
+            if not is_logged_in and remember_web_cookie:
+                print("检测到 REMEMBER_WEB_COOKIE，尝试使用单一 Cookie 登录...")
+                context.clear_cookies()
+                session_cookie = {
+                    'name': 'remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d',
+                    'value': remember_web_cookie,
+                    'domain': 'hub.weirdhost.xyz',
+                    'path': '/',
+                    'expires': int(time.time()) + 3600 * 24 * 365,
+                    'httpOnly': True,
+                    'secure': True,
+                    'sameSite': 'Lax'
+                }
+                is_logged_in = try_cookie_login(context, page, [session_cookie], LOGIN_URL)
+                # if is_logged_in: save_cookies(context) # (可选)
 
-    time.sleep(30)
+            # --- 方案二：如果 Cookie 方案失败或未提供，则使用邮箱密码登录 ---
+            if not is_logged_in and WEIRDHOST_EMAIL and WEIRDHOST_PASSWORD:
+                print("❌ Cookie 无效或不存在，使用 EMAIL/PASSWORD 开始执行登录任务...")
+                print(f"🚀 导航至 https://hub.weirdhost.xyz/auth/login ...")
+                page.goto(
+                    "https://hub.weirdhost.xyz/auth/login",
+                    timeout=60000,
+                    wait_until="domcontentloaded"
+                )
 
-    # --- weirdhost执行步骤 ---
-    try:
-        print("开始执行weirdhost继期任务...")
-        # --- 方案一：优先尝试使用 Cookie 会话登录 ---
-        loaded_cookies = load_cookies_from_file(COOKIE_FILE)
-        if loaded_cookies:
-            is_logged_in = try_cookie_login(context, page, loaded_cookies, LOGIN_URL)
-        if not is_logged_in and remember_web_cookie:
-            print("检测到 REMEMBER_WEB_COOKIE，尝试使用单一 Cookie 登录...")
-            # 清理 context 以确保新的登录是干净的
-            context.clear_cookies()
-            # 构造单一Cookie列表 将cookie的过期时间延长至从当前时间起大约一年
-            session_cookie = {
-                'name': 'remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d',
-                'value': remember_web_cookie,
-                'domain': 'hub.weirdhost.xyz',
-                'path': '/',
-                'expires': int(time.time()) + 3600 * 24 * 365,
-                'httpOnly': True,
-                'secure': True,
-                'sameSite': 'Lax'
-            }
-            is_logged_in = try_cookie_login(context, page, [session_cookie], LOGIN_URL)
-            # 登录成功后，保存新的填入cookies为文件(可选)
-            # if is_logged_in:
-            #     save_cookies(context)
+                page.locator("input[name=\"username\"]").fill(WEIRDHOST_EMAIL)
+                page.locator("input[name=\"password\"]").fill(WEIRDHOST_PASSWORD)
+                try:
+                    page.get_by_role("checkbox", name="만14").check(timeout=5000)
+                except TimeoutError:
+                    pass
 
+                page.get_by_role("button", name="로그인", exact=True).click()
+                page.wait_for_url("https://hub.weirdhost.xyz/")
+                print("用户名密码登录成功。")
+                is_logged_in = True
+                save_cookies(context)
 
-        # --- 方案二：如果 Cookie 方案失败或未提供，则使用邮箱密码登录 ---
-        if not is_logged_in and WEIRDHOST_EMAIL and WEIRDHOST_PASSWORD:
-            print("❌ Cookie 无效或不存在，使用 EMAIL/PASSWORD 开始执行登录任务...")
-            page.goto(
-                "https://hub.weirdhost.xyz/auth/login",
-                timeout=60000,
-                wait_until="domcontentloaded"
-            )
-            # page.goto("https://hub.weirdhost.xyz/auth/login")
+                page.get_by_role("link", name="Discord's Bot Server").click()
+                page.wait_for_url(LOGIN_URL, timeout=15000)
+                print("已进入继期页面...")
 
-            # 执行登录步骤...
-            page.locator("input[name=\"username\"]").fill(WEIRDHOST_EMAIL)
-            page.locator("input[name=\"password\"]").fill(WEIRDHOST_PASSWORD)
-            page.get_by_role("checkbox", name="만14").check()
-            page.get_by_role("button", name="로그인", exact=True).click()
+            # --- 继期操作 ---
+            if is_logged_in:
+                date_locator = page.get_by_text(re.compile(r"유통기한\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:"))
+                full_text = date_locator.text_content(timeout=20000)
+                print(f"定位到的元素内容: {full_text}")
+                match = re.search(r"(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2})", full_text)
+                if match:
+                    expiration_str = match.group(1)
+                    print(f"Found Expiration Date String: {expiration_str}")
 
-            # 等待登录成功后的页面加载
-            page.wait_for_url("https://hub.weirdhost.xyz/")
-            print("用户名密码登录成功。")
-            is_logged_in = True
+                    KST = pytz.timezone('Asia/Seoul')
+                    naive_dt = datetime.strptime(expiration_str, "%Y-%m-%d %H:%M")
+                    expiration_dt = KST.localize(naive_dt)
+                    now_kst = datetime.now(KST)
+                    print(f"Now KST time: {now_kst}")
 
-            # 登录成功后，保存新的 cookies
-            save_cookies(context)
+                    buffer_time = timedelta(days=1)
+                    if expiration_dt > now_kst + buffer_time:
+                        print("✅ 未到24小时继期窗口，不执行操作")
+                        content = f"WEIRDHOST帐号: {WEIRDHOST_EMAIL}帐号\n"
+                        content += f"过期时间：{expiration_dt}\n"
+                        content += f"续期状态: 未到24小时继期窗口，不执行操作\n"
+                        telegram_message = f"**Weirdhost继期信息**\n{content}"
+                        send_telegram_message(telegram_message)
+                    else:
+                        page.get_by_role("button", name="시간추가").click()
+                        print("✅ 已经进入24小时继期窗口，成功完成继期。")
 
-            # 导航到最终的目标继期页面
-            page.get_by_role("link", name="Discord's Bot Server").click()
-            page.wait_for_url(LOGIN_URL, timeout=15000) # 额外等待直到 URL 匹配
-            print("已进入继期页面...")
-
-        # --- 继期操作 ---
-        if is_logged_in:
-            # 确保当前在正确的页面
-            # page.goto(LOGIN_URL, wait_until='domcontentloaded')
-
-            # 日期检查和点击操作
-            date_locator = page.get_by_text(re.compile(r"유통기한\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:"))
-            full_text = date_locator.text_content(timeout=20000) # 20秒
-            print(f"定位到的元素内容: {full_text}")
-            match = re.search(r"(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2})", full_text)
-            if match:
-                expiration_str = match.group(1)
-                print(f"Found Expiration Date String: {expiration_str}")
-
-                KST = pytz.timezone('Asia/Seoul')
-                naive_dt = datetime.strptime(expiration_str, "%Y-%m-%d %H:%M")
-                expiration_dt = KST.localize(naive_dt)
-                now_kst = datetime.now(KST)
-                print(f"Now KST time: {now_kst}")
-
-                # 提前1天继期
-                buffer_time = timedelta(days=1)   # seconds minutes hours
-                if expiration_dt > now_kst + buffer_time:
-                    print("✅ 未到24小时继期窗口，不执行操作")
+                        CST = pytz.timezone('Asia/Shanghai')
+                        current_time = datetime.now(CST).strftime("%Y-%m-%d %H:%M")
+                        content = f"WEIRDHOST帐号: {WEIRDHOST_EMAIL}\n"
+                        content += f"续期状态: 成功\n"
+                        content += f"继期时间: {current_time}\n"
+                        telegram_message = f"**Weirdhost继期信息**\n{content}"
+                        send_telegram_message(telegram_message)
                 else:
-                    page.get_by_role("button", name="시간추가").click()
-                    print("✅ 已经进入24小时继期窗口，成功完成继期。")
-                    # 发送到Telegram消息
-                    CST = pytz.timezone('Asia/Shanghai')
-                    current_time = datetime.now(CST).strftime("%Y-%m-%d %H:%M")
-                    content = f"Server ID: {WEIRDHOST_EMAIL or 'Unknown'}\n"
-                    content += f"Renew status: Success\n"
-                    content += f"Last renewal time: {current_time}\n"
-                    telegram_message = f"**Weirdhost Server Renewal Notification**\n{content}"
-                    send_telegram_message(telegram_message)
+                    print("❌ 未能在页面上找到有效日期字符串。")
             else:
-                print("❌ 未能在页面上找到有效日期字符串。")
-        else:
-            print("❌ 无法登录（Cookie 已失效且未提供 EMAIL/PASSWORD），任务终止。")
+                print("❌ 无法登录（Cookie 已失效且未提供 EMAIL/PASSWORD），任务终止。")
 
-    except TimeoutError as te:
-        print(f"❌ 任务执行失败：Playwright 操作超时 ({te})")
-        page.screenshot(path="error_screenshot.png") # 超时时截图
-    except Exception as e:
-        print("❌ 任务执行失败！")
-        page.screenshot(path="final_error_screenshot.png") # 失败时强制截图
-        print(f"详细错误信息: {e}")
+        except TimeoutError as te:
+            print(f"❌ 任务执行失败：Playwright 操作超时 ({te})")
+            page.screenshot(path="error_screenshot.png")
+        except Exception as e:
+            print("❌ 任务执行失败！")
+            page.screenshot(path="final_error_screenshot.png")
+            print(f"详细错误信息: {e}")
 
-    finally:
-        # ---------------------
-        context.close()
-        browser.close()
+        finally:
+            page.close()
+            context.close()
+
+    else:
+        print("\n--- ℹ️ 跳过 Weirdhost 任务：未配置 WEIRDHOST_EMAIL/PASSWORD 或 remember_web_cookie。 ---")
+
+
+    # ---------------------
+    browser.close()
+    print("\n--- 所有任务执行完毕 ---")
+
 
 if __name__ == '__main__':
     with sync_playwright() as playwright:
