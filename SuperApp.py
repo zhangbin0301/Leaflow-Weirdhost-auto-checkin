@@ -3,6 +3,7 @@ import re
 import json
 import pytz
 import time
+import requests
 from datetime import datetime, timedelta
 from playwright.sync_api import Playwright, sync_playwright, expect, TimeoutError
 
