@@ -2,7 +2,7 @@ name: Super自动签到加继期(Leaflow&Weirdhost)
 
 on:
   schedule:
-    - cron: '0 5 * * *' # 每天UTC时间05:00运行（北京时间13:00）
+    - cron: '0 6 * * *' # 每天UTC时间06:00运行（北京时间14:00）
   workflow_dispatch:  # 允许手动触发
 
 jobs:
