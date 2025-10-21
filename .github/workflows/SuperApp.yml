@@ -2,7 +2,7 @@ name: 自动签到加继期
 
 on:
   schedule:
-    - cron: '0 2 * * *' # 每天UTC时间02:00运行（北京时间10:00）
+    - cron: '0 6 * * *' # 每天UTC时间06:00运行（北京时间14:00）
   workflow_dispatch:  # 允许手动触发
 
 jobs:
