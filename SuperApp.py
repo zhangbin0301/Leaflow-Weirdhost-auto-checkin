@@ -4,13 +4,12 @@ import json
 import pytz
 import time
 import requests
+from typing import List, Tuple
 from datetime import datetime, timedelta
 from playwright.sync_api import Playwright, sync_playwright, expect, TimeoutError
-from typing import List, Tuple
 
 # 定义账户凭证类型
 AccountCredentials = List[Tuple[str, str]]
-
 def parse_accounts(accounts_str: str) -> AccountCredentials:
     # 从账户字符串中解析账户凭证。 "邮箱1,密码1 邮箱2,密码2"
     accounts: AccountCredentials = []
@@ -25,10 +24,8 @@ def parse_accounts(accounts_str: str) -> AccountCredentials:
         if len(parts) == 2:
             accounts.append((parts[0], parts[1]))
         else:
-            print(f"⚠️ 警告：跳过格式错误的账户对 '{pair}'。期待 '邮箱,密码' 格式。")
-
+            print(f"⚠️ 警告：跳过格式错误的账户对 '{pair}'。请使用 '邮箱,密码' 格式。")
     return accounts
-
 
 def run(playwright: Playwright) -> None:
     # --- 环境变量配置 ---
@@ -44,7 +41,7 @@ def run(playwright: Playwright) -> None:
     # Leaflow 多账户配置
     LEAFLOW_ACCOUNTS = parse_accounts(accounts_source_str)
 
-    # Weirdhost 单账户配置 (保持原样)
+    # Weirdhost 单账户配置
     WEIRDHOST_EMAIL = os.environ.get('WEIRDHOST_EMAIL', '')
     WEIRDHOST_PASSWORD = os.environ.get('WEIRDHOST_PASSWORD', '')
     LOGIN_URL = os.environ.get('LOGIN_URL', '')
@@ -80,7 +77,7 @@ def run(playwright: Playwright) -> None:
             print(f"Failed to send Telegram notification: {e}")
             return False
 
-    # 保存为 cookies.json (只在 Weirdhost 单账户逻辑中使用)
+    # 保存为 cookies.json
     def save_cookies(context):
         cookies = context.cookies()
         try:
@@ -90,7 +87,7 @@ def run(playwright: Playwright) -> None:
         except Exception as e:
             print(f"❌ 错误：保存cookies文件时发生未知错误：{e}")
 
-    # 从文件加载cookies (只在 Weirdhost 单账户逻辑中使用)
+    # 从文件加载cookies
     def load_cookies_from_file(file_path):
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -101,7 +98,7 @@ def run(playwright: Playwright) -> None:
             print(f"❌ 错误：加载 {COOKIE_FILE} 文件时发生未知错误或 {COOKIE_FILE} 文件文件不存在")
             return None
 
-    # 尝试使用指定的 cookies 登录并返回是否成功 (只在 Weirdhost 单账户逻辑中使用)
+    # 尝试使用指定的 cookies 登录并返回是否成功
     def try_cookie_login(context, page, cookies_to_add: list, login_url: str) -> bool:
         if not cookies_to_add:
             return False
@@ -158,12 +155,14 @@ def run(playwright: Playwright) -> None:
                 try:
                     page.locator("#app iframe").content_frame.get_by_role("button", name=" 立即签到").click()
                     print(f"✅ 任务执行成功: [{email_id}] 签到操作已完成。")
-                    content = f"LEAFLOW帐号：{email_id} 签到操作已完成！"
+                    content = f"🆔LEAFLOW帐号: {email_id}\n"
+                    content += f"🚀签到状态: 签到操作已完成\n"
                     telegram_message = f"**LEAFLOW签到信息**\n{content}"
                     send_telegram_message(telegram_message)
                 except Exception as e:
                     print(f"✅ [{email_id}] 今日已经签到！")
-                    content = f"LEAFLOW帐号：{email_id} 今日已经签到！"
+                    content = f"🆔LEAFLOW帐号: {email_id}\n"
+                    content += f"🚀签到状态: 今日已经签到！\n"
                     telegram_message = f"**LEAFLOW签到信息**\n{content}"
                     send_telegram_message(telegram_message)
 
@@ -245,41 +244,76 @@ def run(playwright: Playwright) -> None:
 
             # --- 继期操作 ---
             if is_logged_in:
-                date_locator = page.get_by_text(re.compile(r"유통기한\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:"))
-                full_text = date_locator.text_content(timeout=20000)
-                print(f"定位到的元素内容: {full_text}")
-                match = re.search(r"(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2})", full_text)
-                if match:
-                    expiration_str = match.group(1)
-                    print(f"Found Expiration Date String: {expiration_str}")
+                KST = pytz.timezone('Asia/Seoul')
+                # 从页面查找过期日期
+                def get_expiration_date():
+                    try:
+                        date_locator = page.get_by_text(re.compile(r"유통기한\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:"))
+                        # 捕获 text_content() 可能的超时异常
+                        full_text = date_locator.text_content(timeout=20000)
+                        print(f"定位到的元素内容: {full_text}")
+                        match = re.search(r"(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2})", full_text)
+                        if not match:
+                            print("❌ 未能在定位到的文本中找到有效日期字符串。")
+                            return None
 
-                    KST = pytz.timezone('Asia/Seoul')
-                    naive_dt = datetime.strptime(expiration_str, "%Y-%m-%d %H:%M")
-                    expiration_dt = KST.localize(naive_dt)
-                    now_kst = datetime.now(KST)
+                        expiration_str = match.group(1)
+                        print(f"找到到期日期字符串: {expiration_str}")
+
+                        naive_dt = datetime.strptime(expiration_str, "%Y-%m-%d %H:%M")
+                        return KST.localize(naive_dt)
+                    except Exception as e:
+                        print(f"查找过期时间时发生错误: {e}")
+                        return None
+
+                # 1. 获取过期时间
+                expiration_dt = get_expiration_date()
+                # 2. 获取当前时间
+                now_kst = datetime.now(KST)
+                if expiration_dt:
                     print(f"Now KST time: {now_kst}")
-
+                    # 3. 缓冲时间，提前一天  days hours minutes seconds
                     buffer_time = timedelta(days=1)
+                    # 4. 逻辑判断
                     if expiration_dt > now_kst + buffer_time:
                         print("✅ 未到24小时继期窗口，不执行操作")
-                        content = f"WEIRDHOST帐号: {WEIRDHOST_EMAIL}帐号\n"
-                        content += f"过期时间：{expiration_dt}\n"
-                        content += f"续期状态: 未到24小时继期窗口，不执行操作\n"
+                        content = f"🆔WEIRDHOST帐号: {WEIRDHOST_EMAIL}\n"
+                        content += f"⏰下次过期时间：{expiration_dt}\n"
+                        content += f"🚀续期状态: 未到24小时继期窗口，不执行操作\n"
                         telegram_message = f"**Weirdhost继期信息**\n{content}"
                         send_telegram_message(telegram_message)
-                    else:
-                        page.get_by_role("button", name="시간추가").click()
-                        print("✅ 已经进入24小时继期窗口，成功完成继期。")
 
-                        CST = pytz.timezone('Asia/Shanghai')
-                        current_time = datetime.now(CST).strftime("%Y-%m-%d %H:%M")
-                        content = f"WEIRDHOST帐号: {WEIRDHOST_EMAIL}\n"
-                        content += f"续期状态: 成功\n"
-                        content += f"继期时间: {current_time}\n"
-                        telegram_message = f"**Weirdhost继期信息**\n{content}"
-                        send_telegram_message(telegram_message)
+                    else:
+                        # 执行继期操作
+                        try:
+                            page.get_by_role("button", name="시간추가").click()
+                            print("✅ 已经进入24小时继期窗口，成功完成继期。")
+
+                            # 重新获取最新的过期时间
+                            CST = pytz.timezone('Asia/Shanghai')
+                            current_time = datetime.now(CST).strftime("%Y-%m-%d %H:%M")
+                            next_expiration_dt = get_expiration_date()
+
+                            # 使用最新获取的时间发送消息
+                            content = f"🆔WEIRDHOST帐号: {WEIRDHOST_EMAIL}\n"
+                            content += f"⏰当前继期时间: {current_time}\n"
+                            content += f"⏰下次过期时间: {next_expiration_dt}\n"
+                            content += f"🚀续期状态: 成功\n"
+                            telegram_message = f"**Weirdhost继期信息**\n{content}"
+                            send_telegram_message(telegram_message)
+                        except Exception as e:
+                            # 捕获点击按钮的可能错误
+                            print(f"❌ 继期操作失败：点击 '시간추가' 按钮时发生错误: {e}")
+
                 else:
-                    print("❌ 未能在页面上找到有效日期字符串。")
+                    # 如果第一次获取 expiration_dt 就失败了
+                    print("❌ 未能在页面上找到有效的过期时间，无法执行续期判断。")
+                    # 可以考虑在这里发送一个失败的 Telegram 消息
+                    content = f"🆔WEIRDHOST帐号: {WEIRDHOST_EMAIL}\n"
+                    content += f"❌失败原因: 未能在页面上找到有效的过期时间，无法执行续期判断\n"
+                    content += f"🚀续期状态: 失败\n"
+                    telegram_message = f"**Weirdhost继期信息**\n{content}"
+                    send_telegram_message(telegram_message)
             else:
                 print("❌ 无法登录（Cookie 已失效且未提供 EMAIL/PASSWORD），任务终止。")
 
