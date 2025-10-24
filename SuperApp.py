@@ -109,7 +109,7 @@ def run(playwright: Playwright) -> None:
             page.goto(login_url, wait_until='domcontentloaded')
 
             if "auth/login" not in page.url:
-                print("✅ Cookie 登录成功，已进入继期页面。")
+                print("✅ Cookie 登录成功，已进入续期页面。")
                 return True
             else:
                 print("❌ Cookie 登录失败，可能已过期。")
@@ -249,7 +249,7 @@ def run(playwright: Playwright) -> None:
                 def get_expiration_date():
                     try:
                         date_locator = page.get_by_text(re.compile(r"유통기한\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:"))
-                        # 捕获 text_content() 可能的超时异常
+                        # text_content() 使用 Playwright 的默认操作超时，通常是 30 秒 (30000ms)。
                         full_text = date_locator.text_content(timeout=20000)
                         print(f"定位到的元素内容: {full_text}")
                         match = re.search(r"(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2})", full_text)
@@ -278,7 +278,7 @@ def run(playwright: Playwright) -> None:
                     if expiration_dt > now_kst + buffer_time:
                         print("✅ 未到24小时继期窗口，不执行操作")
                         content = f"🆔WEIRDHOST帐号: {WEIRDHOST_EMAIL}\n"
-                        content += f"⏰下次过期时间：{expiration_dt}\n"
+                        content += f"⏰服务器过期时间：{expiration_dt}\n"
                         content += f"🚀续期状态: 未到24小时继期窗口，不执行操作\n"
                         telegram_message = f"**Weirdhost继期信息**\n{content}"
                         send_telegram_message(telegram_message)
@@ -289,6 +289,9 @@ def run(playwright: Playwright) -> None:
                             page.get_by_role("button", name="시간추가").click()
                             print("✅ 已经进入24小时继期窗口，成功完成继期。")
 
+                            print("⏳ 等待 10 秒，以确保服务器过期时间数据已更新...")
+                            time.sleep(10)
+
                             # 重新获取最新的过期时间
                             CST = pytz.timezone('Asia/Shanghai')
                             current_time = datetime.now(CST).strftime("%Y-%m-%d %H:%M")
@@ -296,9 +299,9 @@ def run(playwright: Playwright) -> None:
 
                             # 使用最新获取的时间发送消息
                             content = f"🆔WEIRDHOST帐号: {WEIRDHOST_EMAIL}\n"
-                            content += f"⏰当前继期时间: {current_time}\n"
-                            content += f"⏰下次过期时间: {next_expiration_dt}\n"
+                            content += f"⏰运行继期脚本时间: {current_time}\n"
                             content += f"🚀续期状态: 成功\n"
+                            content += f"⏰服务器下次过期时间: {next_expiration_dt}\n"
                             telegram_message = f"**Weirdhost继期信息**\n{content}"
                             send_telegram_message(telegram_message)
                         except Exception as e:
