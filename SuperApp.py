@@ -261,7 +261,7 @@ def run(playwright: Playwright) -> None:
                         print(f"找到到期日期字符串: {expiration_str}")
 
                         naive_dt = datetime.strptime(expiration_str, "%Y-%m-%d %H:%M")
-                        return KST.localize(naive_dt)
+                        return naive_dt
                     except Exception as e:
                         print(f"查找过期时间时发生错误: {e}")
                         return None
