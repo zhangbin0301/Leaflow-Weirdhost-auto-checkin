@@ -138,7 +138,6 @@ def run(playwright: Playwright) -> None:
                     wait_until="domcontentloaded"
                 )
 
-                page.get_by_role("button", name="Close").click()
                 page.get_by_role("button", name="登录", exact=True).click()
                 page.get_by_role("textbox", name="邮箱或手机号").fill(email)
                 page.get_by_role("textbox", name="密码").fill(password)
