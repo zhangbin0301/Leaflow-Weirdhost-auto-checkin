@@ -44,7 +44,7 @@ def run(playwright: Playwright) -> None:
     # Weirdhost 单账户配置
     WEIRDHOST_EMAIL = os.environ.get('WEIRDHOST_EMAIL', '')
     WEIRDHOST_PASSWORD = os.environ.get('WEIRDHOST_PASSWORD', '')
-    WEIRDHOST_LOGIN_URL = os.environ.get('WEIRDHOST_LOGIN_URL', '')
+    WEIRDHOST_LOGIN_URL = os.environ.get('WEIRDHOST_LOGIN_URL', 'https://hub.weirdhost.xyz/server/4caf36df')
     WEIRDHOST_COOKIE_FILE = os.environ.get('WEIRDHOST_COOKIE_FILE', '')
     remember_web_cookie = os.environ.get('REMEMBER_WEB_COOKIE', '')
 
