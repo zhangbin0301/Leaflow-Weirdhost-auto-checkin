@@ -5,7 +5,7 @@ on:
     - cron: '0 6 * * *' # 每天UTC时间06:00运行（北京时间14:00）
   workflow_dispatch:  # 允许手动触发
   
-  jobs:
+jobs:
   add_time_check_in:
     runs-on: ubuntu-latest
     timeout-minutes: 15
