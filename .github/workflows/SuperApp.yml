@@ -5,7 +5,7 @@ on:
     - cron: '0 6 * * *' # 每天UTC时间06:00运行（北京时间14:00）
   workflow_dispatch:  # 允许手动触发
   
-jobs:
+  jobs:
   add_time_check_in:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -14,7 +14,8 @@ jobs:
       WEIRDHOST_EMAIL: ${{ secrets.WEIRDHOST_EMAIL }}
       WEIRDHOST_PASSWORD: ${{ secrets.WEIRDHOST_PASSWORD }}
       REMEMBER_WEB_COOKIE: ${{ secrets.REMEMBER_WEB_COOKIE }}
-      LOGIN_URL: ${{ secrets.LOGIN_URL }}
+      WEIRDHOST_LOGIN_URL: ${{ secrets.WEIRDHOST_LOGIN_URL }}
+      WEIRDHOST_COOKIE_FILE: ${{ secrets.WEIRDHOST_COOKIE_FILE }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
@@ -42,7 +43,6 @@ jobs:
         with:
           name: error-screenshot and cookie.json
           path: |
-            error_screenshot.png
-            final_error_screenshot.png
-            *cookie.json
+            *.png
+            *.json
           retention-days: 1
