@@ -194,7 +194,7 @@ def run(playwright: Playwright) -> None:
                 print(f"[{email_id}] 已进入签到页面...")
 
                 try:
-                    page.locator("#app iframe").content_frame.get_by_role("button", name=" 立即签到").click()
+                    page.locator("#app iframe").content_frame.get_by_role("button", name=" 立即签到").click()
                     print(f"✅ 任务执行成功: [{email_id}] 签到操作已完成。")
                     content = f"🆔LEAFLOW帐号: {email_id}\n"
                     content += f"🚀签到状态: 签到操作已完成\n"
