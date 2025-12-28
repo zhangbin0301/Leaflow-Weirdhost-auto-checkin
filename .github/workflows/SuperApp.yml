@@ -35,7 +35,7 @@ jobs:
           playwright install --with-deps chromium # 安装 Chromium 浏览器及其运行所需的所有依赖
 
       - name: Run python Script
-        run: python app.py
+        run: python SuperApp.py
 
       - name: Upload Error Screenshot and cookie.json
         uses: actions/upload-artifact@v4
