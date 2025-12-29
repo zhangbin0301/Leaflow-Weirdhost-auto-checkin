@@ -3,7 +3,11 @@ LEAFLOW_ACCOUNTS  email1@example.com,password1 email2@example.com,password2
 
 Weirhost 变量WEIRDHOST_LOGIN_URL=https://hub.weirdhost.xyz/server/4caf36df  注意需要看到续期界面复制整个URL
 
-Hnhost找cookie 设置 CF_CLEARANCE_COOKIE 和 PHPSESSID 两个变量
+REMEMBER_WEB_COOKIE  eyJpdiI6IkE0cxxxxxxxxxxxxxxxxxxxx
+WEIRDHOST_EMAIL 
+下面二个变量可以不写
+WEIRDHOST_LOGIN_URL
+WEIRDHOST_PASSWORD
 
 
 # 老王Leaflow 自动签到脚本& 
@@ -87,6 +91,7 @@ GPL 3.0
 * 禁止新建项目将代码复制到自己仓库中用做商业行为，违者必究
 * 用于商业行为的任何分支必须完整保留本项目说明，违者必究
 * 请遵守当地法律法规,禁止滥用做公共代理行为
+
 
 
 
